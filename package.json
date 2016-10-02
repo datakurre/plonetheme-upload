@@ -1,0 +1,25 @@
+{
+  "name": "plonetheme-upload",
+  "description": "Tool for zipping and uploading a Plone theme over HTTP",
+  "author": "Asko Soukka <asko.soukka@iki.fi>",
+  "version": "0.9.0",
+  "main": "index.js",
+  "bin": {
+    "plonetheme-upload": "index.js"
+  },
+  "files": [
+    "index.js"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/datakurre/plonetheme-upload.git"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "archiver": "^1.1.0",
+    "argparse": "^1.0.9",
+    "assert": "^1.4.1",
+    "prompt": "^1.0.0",
+    "request": "^2.75.0"
+  }
+}
