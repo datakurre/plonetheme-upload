@@ -21,7 +21,7 @@ parser.addArgument('source', {
   help: 'Theme source directory'
 });
 parser.addArgument('destination', {
-  help: 'Theme destination Plone site'
+  help: 'Theme destination Plone site url'
 });
 parser.addArgument('--enable', {
   action: 'storeTrue',
