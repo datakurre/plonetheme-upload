@@ -27,6 +27,10 @@ parser.addArgument('--enable', {
   action: 'storeTrue',
   help: 'Enable theme after upload'
 });
+parser.addArgument('--backup', {
+  action: 'storeTrue',
+  help: 'Backup existing theme before upload'
+});
 
 let args = parser.parseArgs();
 
@@ -58,7 +62,7 @@ try {
       if (response.request.href !== url) {
         login();
       } else {
-        upload(authenticator(body));
+        backup(authenticator(body));
       }
     } else {
       console.error('Error: Theme destination Plone site not found ' +
@@ -97,7 +101,7 @@ function login() {
         } else {
           fs.writeFileSync('.plonetheme-upload-cookie',
                            jar.getCookieString(args.destination));
-          upload(authenticator(body));
+          backup(authenticator(body));
         }
       } else {
         console.error(error);
@@ -132,6 +136,33 @@ StringIO.prototype._write = function (chunk, enc, cb) {
   this.buffer = Buffer.concat([this.buffer, buffer]);
   cb();
 };
+
+// Backup
+function backup(token) {
+  if (args.backup) {
+
+    let url = (
+      args.destination + '/++theme++' + path.basename(args.source) +
+      '/@@download-zip');
+    let filename = (
+      path.basename(args.source) + '_' +
+      (new Date()).toISOString().substr(0, 19).replace(/:/g, '-') + '.zip');
+
+    req({url: url, encoding: null}, function (error, response, body) {
+      if (!error && response.statusCode == 200) {
+        fs.writeFileSync(filename, body);
+        upload(token);
+      } else {
+        console.error('Error: Unable to backup old theme ' +
+            '(response: ' + response.statusCode + ')');
+        process.exit(1);
+      }
+    });
+
+  } else {
+    return upload(token);
+  }
+}
 
 // Upload
 function upload(token) {
