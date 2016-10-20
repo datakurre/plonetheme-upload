@@ -12,7 +12,6 @@ let util = require('util');
 let ArgumentParser = require('argparse').ArgumentParser;
 
 let parser = new ArgumentParser({
-  version: JSON.parse(fs.readFileSync('package.json', 'utf8')).version,
   addHelp: true,
   description: 'Plone Theme Uploader'
 });
