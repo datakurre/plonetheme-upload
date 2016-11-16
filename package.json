@@ -2,7 +2,7 @@
   "name": "plonetheme-upload",
   "description": "Tool for zipping and uploading a Plone theme over HTTP",
   "author": "Asko Soukka <asko.soukka@iki.fi>",
-  "version": "0.9.2",
+  "version": "0.9.3",
   "main": "index.js",
   "bin": {
     "plonetheme-upload": "index.js"
