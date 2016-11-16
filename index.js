@@ -42,6 +42,15 @@ try {
 let jar = request.jar();
 let req = request.defaults({jar: jar});
 
+// Auto-clear cookies from previous days
+try {
+  if ((new Date()).toISOString().substring(0, 10) !=
+      (new Date(fs.statSync('.plonetheme-upload-cookie').mtime))
+        .toISOString().substring(0, 10)) {
+      fs.unlinkSync('.plonetheme-upload-cookie');
+  }
+} catch (e) {}
+
 // Load stored cookie
 try {
   jar.setCookie(fs.readFileSync('.plonetheme-upload-cookie',
@@ -161,6 +170,7 @@ function upload(token) {
           console.log('Upload successful');
           process.exit(0);
         } else {
+          fs.unlinkSync('.plonetheme-upload-cookie'); // Remove cookie on error
           console.log('Error: Unexpected error');
           process.exit(1);
         }
