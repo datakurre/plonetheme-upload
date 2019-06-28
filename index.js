@@ -8,26 +8,32 @@ let prompt = require('prompt');
 let request = require('request');
 let stream = require('stream');
 let util = require('util');
+let password = process.env.PLONETHEME_PASSWORD;
+let username = process.env.PLONETHEME_USERNAME;
 
 let ArgumentParser = require('argparse').ArgumentParser;
 
 let parser = new ArgumentParser({
   addHelp: true,
-  description: 'Plone Theme Uploader'
+  description: 'Plone Theme Uploader',
 });
 
 parser.addArgument('source', {
-  help: 'Theme source directory'
+  help: 'Theme source directory',
 });
 parser.addArgument('destination', {
-  help: 'Theme destination Plone site url'
+  help: 'Theme destination Plone site url',
 });
 parser.addArgument('--enable', {
   action: 'storeTrue',
-  help: 'Enable theme after upload'
+  help: 'Enable theme after upload',
 });
 
 let args = parser.parseArgs();
+let data = {
+  came_from: args.destination + '/@@theming-controlpanel',
+  'form.submitted': 1,
+};
 
 // Assert that the source directory exists
 try {
@@ -44,24 +50,28 @@ let req = request.defaults({jar: jar});
 
 // Auto-clear cookies from previous days
 try {
-  if ((new Date()).toISOString().substring(0, 10) !=
-      (new Date(fs.statSync('.plonetheme-upload-cookie').mtime))
-        .toISOString().substring(0, 10)) {
-      fs.unlinkSync('.plonetheme-upload-cookie');
+  if (
+    new Date().toISOString().substring(0, 10) !=
+    new Date(fs.statSync('.plonetheme-upload-cookie').mtime)
+      .toISOString()
+      .substring(0, 10)
+  ) {
+    fs.unlinkSync('.plonetheme-upload-cookie');
   }
 } catch (e) {}
 
 // Load stored cookie
 try {
-  jar.setCookie(fs.readFileSync('.plonetheme-upload-cookie',
-                                { encoding: 'utf-8'}),
-                args.destination);
+  jar.setCookie(
+    fs.readFileSync('.plonetheme-upload-cookie', {encoding: 'utf-8'}),
+    args.destination,
+  );
 } catch (e) {}
 
 // Assert that the destination URL exists
 (function() {
   let url = args.destination + '/@@theming-controlpanel';
-  req(url, function (error, response, body) {
+  req(url, function(error, response, body) {
     if (!error && response.statusCode == 200) {
       if (response.request.href !== url) {
         login();
@@ -69,8 +79,12 @@ try {
         upload(authenticator(body));
       }
     } else {
-      console.error('Error: Theme destination Plone site not found ' +
-          '(response: ' + response.statusCode + ')');
+      console.error(
+        'Error: Theme destination Plone site not found ' +
+          '(response: ' +
+          response.statusCode +
+          ')',
+      );
       process.exit(1);
     }
   });
@@ -79,41 +93,49 @@ try {
 // Login to Plone
 function login() {
   let url = args.destination + '/login_form';
-  let schema = {
-    properties: {
-      login: {},
-      password: { hidden: true }
-    }
-  };
-  prompt.get(schema, function(err, result) {
-    let data = {
-      'came_from': args.destination + '/@@theming-controlpanel',
-      '__ac_name': result.login,
-      '__ac_password': result.password,
-      'form.submitted': 1
+  // use environment variables for credentials if set
+  if (password && username) {
+    console.log('credentials are set');
+    data.__ac_name = username;
+    data.__ac_password = password;
+  } else {
+    let schema = {
+      properties: {
+        login: {},
+        password: {hidden: true},
+      },
     };
-    request.post({
+    prompt.get(schema, function(err, result) {
+      data.__ac_name = result.login;
+      data.__ac_password = result.password;
+    });
+  }
+
+  request.post(
+    {
       url: url,
       jar: jar,
       form: data,
-      followAllRedirects: true
-    }, function(error, response, body) {
+      followAllRedirects: true,
+    },
+    function(error, response, body) {
       if (!error && response.statusCode == 200) {
         if (!jar.getCookies(args.destination).length) {
           console.error('Error: Invalid username or password');
           process.exit(1);
         } else {
-          fs.writeFileSync('.plonetheme-upload-cookie',
-                           jar.getCookieString(args.destination));
+          fs.writeFileSync(
+            '.plonetheme-upload-cookie',
+            jar.getCookieString(args.destination),
+          );
           upload(authenticator(body));
         }
       } else {
         console.error(error);
         process.exit(1);
       }
-    });
-
-  });
+    },
+  );
 }
 
 // Extract CSRF token
@@ -130,11 +152,11 @@ function StringIO(options) {
 }
 util.inherits(StringIO, stream.Writable);
 
-StringIO.prototype._write = function (chunk, enc, cb) {
+StringIO.prototype._write = function(chunk, enc, cb) {
   // our memory store stores things in buffers
-  var buffer = (Buffer.isBuffer(chunk)) ?
-    chunk :  // already is Buffer use it
-    new Buffer(chunk, enc);  // string, convert
+  var buffer = Buffer.isBuffer(chunk)
+    ? chunk // already is Buffer use it
+    : new Buffer(chunk, enc); // string, convert
 
   // concat to the buffer already there
   this.buffer = Buffer.concat([this.buffer, buffer]);
@@ -150,21 +172,21 @@ function upload(token) {
   archive.pipe(tempfile);
   tempfile.on('finish', function() {
     let data = {
-      'themeArchive': {
+      themeArchive: {
         value: tempfile.buffer,
         options: {
           filename: path.basename(args.source) + '.zip',
-          contentType: 'application/zip'
-        }
+          contentType: 'application/zip',
+        },
       },
       'replaceExisting:boolean': 1,
       'form.button.Import': 1,
-      '_authenticator': token
+      _authenticator: token,
     };
     if (args.enable) {
       data['enableNewTheme:boolean'] = 1;
     }
-    req.post({url: url, formData: data}, function (error, response, body) {
+    req.post({url: url, formData: data}, function(error, response, body) {
       if (!error) {
         if (response.headers.location.endsWith('-controlpanel-mapper')) {
           console.log('Upload successful');
