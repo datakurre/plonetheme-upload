@@ -8,6 +8,8 @@ let prompt = require('prompt');
 let request = require('request');
 let stream = require('stream');
 let util = require('util');
+let password = process.env.PLONETHEME_PASSWORD;
+let username = process.env.PLONETHEME_USERNAME;
 
 let ArgumentParser = require('argparse').ArgumentParser;
 
@@ -28,6 +30,10 @@ parser.addArgument('--enable', {
 });
 
 let args = parser.parseArgs();
+let data = {
+      'came_from': args.destination + '/@@theming-controlpanel',
+      'form.submitted': 1
+    };
 
 // Assert that the source directory exists
 try {
@@ -79,6 +85,12 @@ try {
 // Login to Plone
 function login() {
   let url = args.destination + '/login_form';
+  // use environment variables for credentials if set
+  if(password && username) { 
+    console.log("credentials are set");
+    data.__ac_name = username;
+    data.__ac_password = password;
+  } else {
   let schema = {
     properties: {
       login: {},
@@ -86,12 +98,12 @@ function login() {
     }
   };
   prompt.get(schema, function(err, result) {
-    let data = {
-      'came_from': args.destination + '/@@theming-controlpanel',
-      '__ac_name': result.login,
-      '__ac_password': result.password,
-      'form.submitted': 1
-    };
+      data.__ac_name = result.login;
+      data.__ac_password = result.password;
+
+  });
+  }
+
     request.post({
       url: url,
       jar: jar,
@@ -113,7 +125,6 @@ function login() {
       }
     });
 
-  });
 }
 
 // Extract CSRF token
